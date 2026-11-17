@@ -73,6 +73,43 @@
             </div>
         @endif
 
+        {{-- Cada execução da procedure fica registrada e pode ser desfeita --}}
+        <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-gray-800">Últimas quitações</h3>
+                <p class="text-xs text-gray-400">
+                    Desfazer volta para <strong>Devendo</strong> só os pagamentos que aquela quitação marcou como Pago;
+                    quem já estava pago antes continua pago.
+                </p>
+            </div>
+            @forelse ($quitacoes as $q)
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-6 py-3 border-b border-gray-50 text-sm">
+                    <span class="text-gray-800">
+                        <strong>#{{ $q->id }}</strong> · plano {{ $q->plano }} ·
+                        {{ $q->quantidade }} pagamento(s) ·
+                        {{ $q->created_at->setTimezone('America/Sao_Paulo')->format('d/m/Y H:i') }}
+                        @if ($q->usuario)
+                            · por {{ $q->usuario->name }}
+                        @endif
+                    </span>
+
+                    @if ($q->foiDesfeita())
+                        <x-crud.badge color="gray">Desfeita em {{ $q->desfeita_em->setTimezone('America/Sao_Paulo')->format('d/m/Y H:i') }}</x-crud.badge>
+                    @elseif (auth()->user()->isAdmin())
+                        <form method="POST" action="{{ route('banco.desfazer-quitacao', $q) }}"
+                              onsubmit="return confirm('Desfazer a quitação #{{ $q->id }}? {{ $q->quantidade }} pagamento(s) voltam para Devendo.')">
+                            @csrf
+                            <button class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium">Desfazer</button>
+                        </form>
+                    @else
+                        <x-crud.badge color="green">Ativa</x-crud.badge>
+                    @endif
+                </div>
+            @empty
+                <p class="px-6 py-4 text-sm text-gray-500">Nenhuma quitação feita pela tela ainda.</p>
+            @endforelse
+        </div>
+
         {{-- Resultado da function fn_inadimplentes --}}
         <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100">

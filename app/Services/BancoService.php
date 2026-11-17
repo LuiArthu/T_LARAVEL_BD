@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Pagamento;
+use App\Models\Quitacao;
+use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  *   fn_inadimplentes(modalidade)                 -> inadimplentes()
  *   calculo_total_mensalidade(modalidade, plano) -> totalMensalidadesPagas()
  *   desconto_faixas_pretas(valor)                -> totalFaixasPretasComDesconto()
- *   CALL atualizar_pagamento(...)                -> quitarPlano()
+ *   CALL atualizar_pagamento(...)                -> quitarPlano()  (desfazível: desfazerQuitacao())
  *   trigger trg_historico_faixa -> historico_faixa -> historicoFaixas()
  *
  * Esses objetos só existem no PostgreSQL. Nos testes (SQLite em memória)
@@ -51,19 +53,71 @@ class BancoService
 
     /**
      * Procedure atualizar_pagamento: marca como 'Pago' todos os pagamentos
-     * ATIVOS e 'Devendo' do plano. Devolve quantos mudaram.
+     * ATIVOS e 'Devendo' do plano.
+     *
+     * Antes de chamar a procedure, anota QUAIS pagamentos estão pendentes
+     * (com lock, para ninguém alterá-los no meio do caminho) e guarda essa
+     * lista em uma Quitacao. É ela que permite desfazer depois.
+     * Devolve null quando não havia nada a quitar.
      */
-    public function quitarPlano(string $plano): int
+    public function quitarPlano(string $plano): ?Quitacao
     {
-        $pendentes = fn () => Pagamento::where('plano', $plano)
-            ->where('ativo', true)
-            ->where('status_pagamento', 'Devendo')
-            ->count();
+        return DB::transaction(function () use ($plano) {
+            $pendentes = Pagamento::where('plano', $plano)
+                ->where('ativo', true)
+                ->where('status_pagamento', 'Devendo')
+                ->lockForUpdate()
+                ->pluck('id');
 
-        $antes = $pendentes();
-        $this->pagamentos->atualizarStatus('Devendo', $plano, 'Pago');
+            if ($pendentes->isEmpty()) {
+                return null;
+            }
 
-        return $antes - $pendentes();
+            $this->pagamentos->atualizarStatus('Devendo', $plano, 'Pago');
+
+            $quitados = Pagamento::whereIn('id', $pendentes)
+                ->where('status_pagamento', 'Pago')
+                ->pluck('id');
+
+            $quitacao = Quitacao::create([
+                'plano' => $plano,
+                'quantidade' => $quitados->count(),
+                'user_id' => auth()->id(),
+            ]);
+            $quitacao->pagamentos()->attach($quitados);
+
+            return $quitacao;
+        });
+    }
+
+    /**
+     * Desfaz uma quitação: volta para 'Devendo' SOMENTE os pagamentos que ela
+     * marcou como 'Pago' (quem já estava pago antes continua pago).
+     * Devolve quantos pagamentos voltaram.
+     *
+     * @throws DomainException se a quitação já foi desfeita
+     */
+    public function desfazerQuitacao(Quitacao $quitacao): int
+    {
+        if ($quitacao->foiDesfeita()) {
+            throw new DomainException("A quitação #{$quitacao->id} já foi desfeita.");
+        }
+
+        return DB::transaction(function () use ($quitacao) {
+            $voltaram = Pagamento::whereIn('id', $quitacao->pagamentos()->pluck('pagamento.id'))
+                ->where('status_pagamento', 'Pago')
+                ->update(['status_pagamento' => 'Devendo']);
+
+            $quitacao->update(['desfeita_em' => now()]);
+
+            return $voltaram;
+        });
+    }
+
+    /** Últimas quitações feitas pela tela, com quem executou. */
+    public function ultimasQuitacoes(int $limite = 10): Collection
+    {
+        return Quitacao::with('usuario:id,name')->latest('id')->limit($limite)->get();
     }
 
     /** Tabela historico_faixa, preenchida pelo trigger trg_historico_faixa. */

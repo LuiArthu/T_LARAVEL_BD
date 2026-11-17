@@ -127,6 +127,7 @@ Route::middleware('auth')->group(function () {
     |
     | GET  /banco               resultado das functions + histórico do trigger
     | POST /banco/quitar-plano  executa a procedure atualizar_pagamento (admin)
+    | POST /banco/quitacoes/{quitacao}/desfazer  desfaz uma quitação (admin)
     |
     */
 
@@ -137,6 +138,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/banco/quitar-plano', [BancoController::class, 'quitarPlano'])
         ->middleware('admin')
         ->name('banco.quitar-plano');
+
+    Route::post('/banco/quitacoes/{quitacao}/desfazer', [BancoController::class, 'desfazerQuitacao'])
+        ->middleware('admin')
+        ->name('banco.desfazer-quitacao');
 
 
     /*

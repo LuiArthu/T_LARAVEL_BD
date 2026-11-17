@@ -38,7 +38,7 @@ Legenda: ✅ atende · ⚠️ atende em parte ou tem risco na arguição · ❌ 
 | **Services** | ✅ | `app/Services/` (Cliente, Matricula, Pagamento, Tamanho) |
 | **Models e migrations** | ✅ | `app/Models/`, `database/migrations/` |
 | Demonstrar **uso de function/procedure/trigger pelo Laravel** | ✅ | Tela **Banco de dados** (`/banco`) e histórico de faixas na tela do cliente, via [BancoService](../app/Services/BancoService.php). Ver ponto 1 |
-| Testes automatizados (≥ 2 web + ≥ 2 API) | ✅ | 7 testes web e 5 de API; a suíte inteira tem **40 testes, todos passando** |
+| Testes automatizados (≥ 2 web + ≥ 2 API) | ✅ | 8 testes web e 5 de API; a suíte inteira tem **41 testes, todos passando** |
 
 ### Versionamento, documentação e entrega
 
@@ -70,6 +70,7 @@ O enunciado pede para *"demonstrar a integração entre a aplicação e os recur
 | Menu **Banco de dados** → cartão "Faixas pretas com desconto" | function `desconto_faixas_pretas` | `DB::scalar('SELECT desconto_faixas_pretas(?)')` |
 | Menu **Banco de dados** → cartão e tabela "Inadimplentes" | function `fn_inadimplentes` | `DB::select('SELECT * FROM fn_inadimplentes(?)')` |
 | Menu **Banco de dados** → botão "Executar procedure" (só admin) | procedure `atualizar_pagamento` | `DB::statement('CALL atualizar_pagamento(?, ?, ?)')` |
+| Menu **Banco de dados** → "Últimas quitações" → botão "Desfazer" (só admin) | reverte a procedure | volta para Devendo **só** os pagamentos que aquela quitação alterou (tabelas `quitacoes` e `quitacao_pagamento`) |
 | Menu **Banco de dados** → "Histórico de faixas" e **tela do cliente** → "Histórico de faixas" | trigger `trg_historico_faixa` (tabela `historico_faixa`) | `DB::table('historico_faixa')` |
 | Salvar um pagamento inativo como "Pago" | trigger `trg_bloqueio_pagamento` | dispara sozinho no `UPDATE` |
 
@@ -100,6 +101,18 @@ O enunciado fala em índices **relevantes**, e o professor pode perguntar "qual 
 | `idx_infos_pagamento (cliente_id, dia_pagamento, forma_pagamento, status_pagamento)` | join clientes → pagamento; como é *covering*, permite *index-only scan* | médio: os filtros da tela e da procedure são `status_pagamento`, `plano` e `ativo`, que não são a coluna líder |
 
 Uma alternativa mais fácil de defender seria `pagamento (status_pagamento, plano) WHERE ativo`, um índice parcial que atende exatamente `atualizar_pagamento` e `fn_inadimplentes`. Para mostrar o uso, rode `EXPLAIN ANALYZE` na apresentação.
+
+### Desfazer uma quitação
+
+A procedure `atualizar_pagamento` não guarda quais pagamentos alterou. Por isso, chamá-la "ao contrário" (`'Pago' → 'Devendo'`) marcaria como devendo também quem **já estava pago antes**.
+
+O `BancoService::quitarPlano` resolve isso assim:
+1. Antes de chamar a procedure, anota os ids dos pagamentos pendentes, com `lockForUpdate`.
+2. Depois da procedure, grava esses ids em `quitacoes` e `quitacao_pagamento`, tudo numa única transação.
+
+O botão **Desfazer** volta para *Devendo* apenas esses ids e marca a quitação como desfeita; não dá para desfazer duas vezes.
+
+A tabela `quitacao_pagamento` **não tem FK** para `pagamento` de propósito: o `academia_completo.sql` recria `pagamento` com `DROP TABLE`, e a FK impediria o script de rodar.
 
 ### ⚠️ 5. Objetos do banco ficam fora das migrations
 
@@ -189,7 +202,8 @@ Todas exigem login (middleware `auth`), exceto `/login`.
 | | `/tamanhos`… | `tamanhos.*` | Mesmas 7 rotas |
 | | `/pagamentos`… | `pagamentos.*` | Mesmas 7 rotas; filtros por situação, plano e ativo, mais o cartão de inadimplentes |
 | GET | `/banco` | `banco.index` | Resultado das functions (`?modalidade=&plano=&valor=`), inadimplentes e histórico do trigger (admin e instrutor) |
-| POST | `/banco/quitar-plano` | `banco.quitar-plano` | Executa a procedure `atualizar_pagamento` para o plano escolhido (só admin) |
+| POST | `/banco/quitar-plano` | `banco.quitar-plano` | Executa a procedure `atualizar_pagamento` para o plano escolhido e registra quais pagamentos mudaram (só admin) |
+| POST | `/banco/quitacoes/{id}/desfazer` | `banco.desfazer-quitacao` | Desfaz uma quitação: só os pagamentos dela voltam para Devendo (só admin) |
 | GET | `/alunos` | n/a | Redireciona (301) para `/clientes` (endereço antigo) |
 
 Cada linha `Route::resource('x', XController::class)` gera as 7 rotas acima. Para listar todas:
@@ -266,7 +280,7 @@ O `PagamentoResource` devolve **só o id e o nome** do cliente, sem CPF nem ende
 | | `test_visitante_vai_para_o_login_equipe_lista_e_aluno_e_bloqueado` · `test_equipe_cadastra_pagamento_validando_os_dados` · `test_somente_admin_exclui_pagamento` | [PagamentoRoutesTest.php](../tests/Feature/Web/PagamentoRoutesTest.php) |
 | 2 testes de rotas de **API** | `test_ciclo_completo_de_matriculas_pela_api` | [MatriculaApiTest.php](../tests/Feature/Api/MatriculaApiTest.php) |
 | | `test_api_exige_autenticacao_e_so_a_equipe_acessa` · `test_api_lista_pagamentos_em_json_e_filtra_por_situacao` · `test_ciclo_completo_de_pagamentos_pela_api` · `test_api_valida_os_dados_do_pagamento` | [PagamentoApiTest.php](../tests/Feature/Api/PagamentoApiTest.php) |
-| | `test_somente_a_equipe_ve_a_tela_do_banco` · `test_somente_admin_executa_a_procedure_e_o_plano_e_validado` | [BancoRoutesTest.php](../tests/Feature/Web/BancoRoutesTest.php) |
+| | `test_somente_a_equipe_ve_a_tela_do_banco` · `test_somente_admin_executa_a_procedure_e_o_plano_e_validado` · `test_admin_desfaz_quitacao_sem_mexer_em_quem_ja_estava_pago` | [BancoRoutesTest.php](../tests/Feature/Web/BancoRoutesTest.php) |
 | Extra: Service | Validação de parâmetros de `atualizarStatus()` | [PagamentoServiceTest.php](../tests/Unit/PagamentoServiceTest.php) |
 
 Os testes de API conferem os códigos **200, 201, 204, 401, 403 e 422** e a estrutura do JSON (`assertJsonStructure`).
@@ -277,7 +291,7 @@ O [phpunit.xml](../phpunit.xml) força um banco **SQLite em memória** (`DB_CONN
 
 ```bash
 npm run build            # as views usam Vite; sem o build os testes de tela falham
-php artisan test         # resultado atual: 40 testes, 208 asserções, todos passando
+php artisan test         # resultado atual: 41 testes, 216 asserções, todos passando
 ```
 
 Por garantia, já que o `.env` aponta para o Neon, também dá para rodar assim:
@@ -296,7 +310,7 @@ DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test
 | `calculo_total_mensalidade(modalidade, plano)` | function | Conta mensalidades pagas por modalidade | ✅ Tela Banco de dados (`BancoService::totalMensalidadesPagas`) |
 | `desconto_faixas_pretas(valor)` | function | Total com 10% de desconto para faixas pretas | ✅ Tela Banco de dados (`BancoService::totalFaixasPretasComDesconto`) |
 | `sp_registrar_matricula(...)` | procedure | Matrícula sem duplicidade; faixa N/A em Boxe, Muay Thai e Personal | ⚠️ Regra reescrita em PHP (`MatriculaService`) |
-| `atualizar_pagamento(...)` | procedure | Muda o status de todos os ativos de um plano | ✅ Botão "Executar procedure" (`BancoService::quitarPlano` → `PagamentoService::atualizarStatus`) |
+| `atualizar_pagamento(...)` | procedure | Muda o status de todos os ativos de um plano | ✅ Botão "Executar procedure" (`BancoService::quitarPlano` → `PagamentoService::atualizarStatus`), com botão "Desfazer" (`BancoService::desfazerQuitacao`) |
 | `atualizar_faixa` / `restaurar_faixa` / `restaurar_pagamento` | procedures | Graduação em lote e reversão | Só no SQL (demonstração do script) |
 | `trg_historico_faixa` | trigger | Registra toda mudança de faixa | ✅ Dispara ao editar a matrícula; o histórico aparece na tela do cliente e no Banco de dados |
 | `trg_bloqueio_pagamento` | trigger | Impede marcar como "Pago" o pagamento de aluno inativo | ✅ Dispara em gravações do app (o `PagamentoRequest` também valida) |
@@ -319,11 +333,12 @@ Backup e restauração: [database/backup/](../database/backup/) e [EVIDENCIAS.md
 4. **(2 min)** Banco, tudo pela tela:
    - menu **Banco de dados**: trocar a modalidade e mostrar as functions recalculando;
    - clicar em **Executar procedure** e ver a mensagem "N pagamentos passaram para Pago";
+   - em **Últimas quitações**, clicar em **Desfazer** e mostrar que só aqueles pagamentos voltaram para Devendo;
    - editar a faixa de uma matrícula e mostrar a linha nova em **Histórico de faixas** na tela do cliente (trigger).
 
-   Depois da demonstração, rode `CALL restaurar_pagamento();` no SQL Editor do Neon para devolver os pagamentos ao estado original.
+   Como a quitação é desfeita pela própria tela, os dados terminam como estavam.
 5. **(1 min)** Backup e restauração: mostrar o `EVIDENCIAS.md` com a tabela "idêntico".
-6. **(1 min)** `php artisan test`: 40 testes passando.
+6. **(1 min)** `php artisan test`: 41 testes passando.
 
 ### Perguntas prováveis
 

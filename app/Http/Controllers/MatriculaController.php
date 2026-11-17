@@ -38,7 +38,6 @@ class MatriculaController extends Controller implements HasMiddleware
 
     public function create(Request $request): View
     {
-        // ?cliente_id=7 (vindo da tela do cliente) já deixa o cliente selecionado.
         $matricula = new Matricula(['cliente_id' => $request->integer('cliente_id') ?: null]);
 
         return view('matriculas.create', [

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Web;
 
+use App\Models\Pagamento;
+use App\Models\Quitacao;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -51,6 +53,41 @@ class BancoRoutesTest extends TestCase
             ->from(route('banco.index'))
             ->post(route('banco.quitar-plano'), ['plano' => 'Anual'])
             ->assertRedirect(route('banco.index'))
+            ->assertSessionHas('error');
+    }
+
+    /**
+     * Desfazer volta para Devendo SÓ os pagamentos da quitação; quem já
+     * estava pago antes continua pago. Não dá para desfazer duas vezes.
+     */
+    public function test_admin_desfaz_quitacao_sem_mexer_em_quem_ja_estava_pago(): void
+    {
+        $jaEstavaPago = Pagamento::factory()->create(['plano' => 'Anual', 'status_pagamento' => 'Pago']);
+        $quitado = Pagamento::factory()->create(['plano' => 'Anual', 'status_pagamento' => 'Pago']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $quitacao = Quitacao::create(['plano' => 'Anual', 'quantidade' => 1, 'user_id' => $admin->id]);
+        $quitacao->pagamentos()->attach($quitado->id);
+
+        $instrutor = User::factory()->create(['role' => 'instrutor']);
+        $this->actingAs($instrutor)
+            ->post(route('banco.desfazer-quitacao', $quitacao))
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->from(route('banco.index'))
+            ->post(route('banco.desfazer-quitacao', $quitacao))
+            ->assertRedirect(route('banco.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('Devendo', $quitado->fresh()->status_pagamento);
+        $this->assertSame('Pago', $jaEstavaPago->fresh()->status_pagamento);
+        $this->assertNotNull($quitacao->fresh()->desfeita_em);
+
+        // Segunda vez: recusado, nada muda.
+        $this->actingAs($admin)
+            ->from(route('banco.index'))
+            ->post(route('banco.desfazer-quitacao', $quitacao))
             ->assertSessionHas('error');
     }
 }

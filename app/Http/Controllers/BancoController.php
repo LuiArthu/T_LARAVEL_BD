@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Matricula;
 use App\Models\Pagamento;
+use App\Models\Quitacao;
 use App\Services\BancoService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -39,13 +41,14 @@ class BancoController extends Controller
                 'mensalidadesPagas' => $this->banco->totalMensalidadesPagas($modalidade ?? 'Jiu-Jitsu', $plano),
                 'faixasPretas' => $this->banco->totalFaixasPretasComDesconto($valor),
                 'historico' => $this->banco->historicoFaixas(),
+                'quitacoes' => $this->banco->ultimasQuitacoes(),
             ];
         }
 
         return view('banco.index', $dados);
     }
 
-    /** POST /banco/quitar-plano  (somente admin): CALL atualizar_pagamento('Devendo', plano, 'Pago') */
+    /** CALL atualizar_pagamento('Devendo', plano, 'Pago') */
     public function quitarPlano(Request $request): RedirectResponse
     {
         $dados = $request->validate([
@@ -56,8 +59,24 @@ class BancoController extends Controller
             return back()->with('error', 'A procedure atualizar_pagamento só existe no PostgreSQL.');
         }
 
-        $alterados = $this->banco->quitarPlano($dados['plano']);
+        $quitacao = $this->banco->quitarPlano($dados['plano']);
 
-        return back()->with('success', "Procedure atualizar_pagamento executada: {$alterados} pagamento(s) do plano {$dados['plano']} passaram de Devendo para Pago.");
+        if ($quitacao === null) {
+            return back()->with('error', "Nenhum pagamento ativo do plano {$dados['plano']} está devendo: nada a quitar.");
+        }
+
+        return back()->with('success', "Procedure atualizar_pagamento executada: {$quitacao->quantidade} pagamento(s) do plano {$dados['plano']} passaram de Devendo para Pago. Para reverter, use \"Desfazer\" em Últimas quitações.");
+    }
+
+    /** Volta para 'Devendo' somente os pagamentos que esta quitação marcou como 'Pago'. */
+    public function desfazerQuitacao(Quitacao $quitacao): RedirectResponse
+    {
+        try {
+            $voltaram = $this->banco->desfazerQuitacao($quitacao);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Quitação #{$quitacao->id} desfeita: {$voltaram} pagamento(s) do plano {$quitacao->plano} voltaram para Devendo.");
     }
 }
