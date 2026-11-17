@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Backups do banco (têm dados pessoais; as evidências ficam em docs/)
+/storage/backups/
+.env.*.bak

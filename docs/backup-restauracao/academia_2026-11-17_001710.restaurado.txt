@@ -1,0 +1,80 @@
+tabela academia_lutas_BD.clientes | 500 | 7ff57b715f321baa37716a6c2a0cc9d1
+tabela academia_lutas_BD.historico_faixa | 96 | a22cd611c780f479abd2e95af61fa96d
+tabela academia_lutas_BD.matriculas | 500 | d0bed28ea259c121ea51db2bdab298ce
+tabela academia_lutas_BD.matriculas_original | 500 | d0bed28ea259c121ea51db2bdab298ce
+tabela academia_lutas_BD.pagamento | 500 | b796e6476a3961bdbc5aa81e352effce
+tabela academia_lutas_BD.tamanhos | 500 | 3c2c6e7a922e07b27774295c696dbc4a
+tabela backup.clientes_inicial | 500 | 7ff57b715f321baa37716a6c2a0cc9d1
+tabela backup.matriculas_inicial | 500 | d0bed28ea259c121ea51db2bdab298ce
+tabela backup.pagamento_inicial | 500 | c03e7d529f8fd44cc6ac926121089a90
+tabela backup.tamanhos_inicial | 500 | 3c2c6e7a922e07b27774295c696dbc4a
+tabela public.clientes | 500 | 7ff57b715f321baa37716a6c2a0cc9d1
+tabela public.historico_faixa | 360 | 6dd4b6910dfbe458ca370c6e0848bbd2
+tabela public.matriculas | 500 | d0bed28ea259c121ea51db2bdab298ce
+tabela public.matriculas_original | 500 | d0bed28ea259c121ea51db2bdab298ce
+tabela public.migrations | 11 | d399685cd35232066b9c4ba0f840016c
+tabela public.modalidades | 5 | 12e218d45307b691c8da095aac30f041
+tabela public.pagamento | 500 | c03e7d529f8fd44cc6ac926121089a90
+tabela public.pagamento_original | 500 | c03e7d529f8fd44cc6ac926121089a90
+tabela public.password_reset_tokens | 0 | d41d8cd98f00b204e9800998ecf8427e
+tabela public.tamanhos | 500 | 3c2c6e7a922e07b27774295c696dbc4a
+tabela public.users | 3 | d58d1fc65507031fe900ffdb3a384781
+rotina | academia_lutas_BD | procedure | atualizar_faixa(IN m_modalidade character varying, IN m_faixa character varying, IN m_faixa_nova character varying)
+rotina | academia_lutas_BD | procedure | atualizar_pagamento(IN p_status_pagamento character varying, IN p_plano character varying, IN p_pagamento_novo character varying)
+rotina | academia_lutas_BD | function | bloqueia_pagamento()
+rotina | academia_lutas_BD | function | calculo_total_mensalidade(m_modalidade character varying, p_plano character varying)
+rotina | academia_lutas_BD | function | calculo_total_mensalidade(p_plano integer, m_faixa character varying, p_desconto integer)
+rotina | academia_lutas_BD | function | desconto_faixas_pretas(p_plano integer, m_faixa character varying, p_desconto integer)
+rotina | academia_lutas_BD | function | registrar_historico_faixa()
+rotina | academia_lutas_BD | procedure | restaurar_faixa()
+rotina | public | procedure | atualizar_faixa(IN m_modalidade character varying, IN m_faixa character varying, IN m_faixa_nova character varying)
+rotina | public | procedure | atualizar_pagamento(IN p_status_pagamento character varying, IN p_plano character varying, IN p_pagamento_novo character varying)
+rotina | public | function | bloqueia_pagamento()
+rotina | public | function | calculo_total_mensalidade(m_modalidade character varying, p_plano character varying)
+rotina | public | function | desconto_faixas_pretas(p_plano integer, m_faixa character varying, p_desconto integer)
+rotina | public | function | fn_inadimplentes(p_modalidade character varying)
+rotina | public | function | registrar_historico_faixa()
+rotina | public | procedure | restaurar_faixa()
+rotina | public | procedure | restaurar_pagamento()
+rotina | public | procedure | sp_registrar_matricula(IN p_cliente_id integer, IN p_modalidade character varying, IN p_faixa character varying, IN p_data_inicio date, INOUT p_matricula_id integer)
+trigger | academia_lutas_BD | matriculas | trg_historico_faixa
+trigger | academia_lutas_BD | pagamento | trg_bloqueio_pagamento
+trigger | public | matriculas | trg_historico_faixa
+trigger | public | pagamento | trg_bloqueio_pagamento
+indice | academia_lutas_BD | clientes | clientes_cpf_key
+indice | academia_lutas_BD | clientes | clientes_pkey
+indice | academia_lutas_BD | historico_faixa | historico_faixa_pkey
+indice | academia_lutas_BD | matriculas | idx_aluno_modalidade_matriculas
+indice | academia_lutas_BD | matriculas | matriculas_pkey
+indice | academia_lutas_BD | pagamento | idx_infos_pagamento
+indice | academia_lutas_BD | pagamento | idx_modalidade_mensalidade_pagamento
+indice | academia_lutas_BD | pagamento | pagamento_pkey
+indice | academia_lutas_BD | tamanhos | idx_cliente_tamanhos
+indice | academia_lutas_BD | tamanhos | tamanhos_pkey
+indice | public | cache | cache_expiration_index
+indice | public | cache | cache_pkey
+indice | public | cache_locks | cache_locks_expiration_index
+indice | public | cache_locks | cache_locks_pkey
+indice | public | clientes | clientes_cpf_key
+indice | public | clientes | clientes_pkey
+indice | public | failed_jobs | failed_jobs_connection_queue_failed_at_index
+indice | public | failed_jobs | failed_jobs_pkey
+indice | public | failed_jobs | failed_jobs_uuid_unique
+indice | public | historico_faixa | historico_faixa_pkey
+indice | public | job_batches | job_batches_pkey
+indice | public | jobs | jobs_pkey
+indice | public | jobs | jobs_queue_index
+indice | public | matriculas | idx_matriculas_cliente_modalidade
+indice | public | matriculas | matriculas_pkey
+indice | public | migrations | migrations_pkey
+indice | public | modalidades | modalidades_pkey
+indice | public | pagamento | idx_infos_pagamento
+indice | public | pagamento | pagamento_pkey
+indice | public | password_reset_tokens | password_reset_tokens_pkey
+indice | public | sessions | sessions_last_activity_index
+indice | public | sessions | sessions_pkey
+indice | public | sessions | sessions_user_id_index
+indice | public | tamanhos | idx_cliente_tamanhos
+indice | public | tamanhos | tamanhos_pkey
+indice | public | users | users_email_unique
+indice | public | users | users_pkey

@@ -1,0 +1,7 @@
+banco: neondb_restore
+NOTICE:  O resultado é 164
+calculo_total_mensalidade() = 164
+NOTICE:  O total das 8 faixas pretas com 10 por cento de desconto é: 1080
+desconto_faixas_pretas(150) = 1080
+fn_inadimplentes() = 73 linhas
+NOTICE:  trg_bloqueio_pagamento bloqueou: O aluno 5 está inativo e por conta disso não pode ter o pagamento registrado
