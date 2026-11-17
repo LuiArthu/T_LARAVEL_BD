@@ -26,6 +26,14 @@ php artisan migrate:fresh --seed
 npm run build
 \`\`\`
 
+Depois, no mesmo banco (SQL Editor do Neon ou Query Tool do pgAdmin), rode
+nesta ordem:
+
+1. `database/sql/academia_completo.sql`: tabelas com 500 registros, function, procedures e trigger.
+2. `database/sql/trabalho_final.sql`: índices, functions, procedures e triggers do trabalho final.
+
+Não rode `migrate:fresh` depois disso: ele apaga todas as tabelas do banco.
+
 ## Execução
 \`\`\`bash
 php artisan serve
@@ -53,3 +61,12 @@ Ver, criar e editar: admin e instrutor. Excluir: somente admin.
   o script recria as tabelas e, se rodar `php artisan migrate` depois, ele
   tentará criá-las de novo.
 - Testes: `php artisan test` (precisa de `npm run build` antes por causa do Vite).
+
+## Backup e restauração
+
+Ver [docs/backup-restauracao/EVIDENCIAS.md](docs/backup-restauracao/EVIDENCIAS.md). Requer `postgresql-client-18` (mesma versão do Neon).
+
+```bash
+bash database/backup/backup.sh
+bash database/backup/restaurar.sh storage/backups/academia_<data>.dump
+```
