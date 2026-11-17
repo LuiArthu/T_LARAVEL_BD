@@ -45,6 +45,17 @@
         @endforelse
     </div>
 
+    {{-- Histórico de faixas: gravado pelo trigger trg_historico_faixa --}}
+    @isset($historicoFaixas)
+        <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-gray-800">Histórico de faixas</h3>
+                <p class="text-xs text-gray-400">registrado automaticamente pelo trigger <code>trg_historico_faixa</code></p>
+            </div>
+            @include('banco._historico', ['historico' => $historicoFaixas])
+        </div>
+    @endisset
+
     {{-- Tamanhos --}}
     <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">

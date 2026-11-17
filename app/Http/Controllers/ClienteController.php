@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\AutorizaRecurso;
 use App\Http\Requests\ClienteRequest;
 use App\Models\Cliente;
+use App\Services\BancoService;
 use App\Services\ClienteService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -45,9 +46,13 @@ class ClienteController extends Controller implements HasMiddleware
         return redirect()->route('clientes.show', $cliente)->with('success', 'Cliente cadastrado!');
     }
 
-    public function show(Cliente $cliente): View
+    public function show(Cliente $cliente, BancoService $banco): View
     {
-        return view('clientes.show', ['cliente' => $this->clientes->detalhar($cliente)]);
+        return view('clientes.show', [
+            'cliente' => $this->clientes->detalhar($cliente),
+            // Tabela preenchida pelo trigger trg_historico_faixa (só no PostgreSQL).
+            'historicoFaixas' => $banco->disponivel() ? $banco->historicoFaixas($cliente->id) : null,
+        ]);
     }
 
     public function edit(Cliente $cliente): View

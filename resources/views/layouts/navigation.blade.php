@@ -78,6 +78,12 @@
                         :active="request()->routeIs('pagamentos.*')">
                         Pagamentos
                     </x-nav-link>
+
+                    <x-nav-link
+                        :href="route('banco.index')"
+                        :active="request()->routeIs('banco.*')">
+                        Banco de dados
+                    </x-nav-link>
                 @endcan
 
             </div>
@@ -234,6 +240,12 @@
                 :href="route('pagamentos.index')"
                 :active="request()->routeIs('pagamentos.*')">
                 Pagamentos
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link
+                :href="route('banco.index')"
+                :active="request()->routeIs('banco.*')">
+                Banco de dados
             </x-responsive-nav-link>
         @endcan
 

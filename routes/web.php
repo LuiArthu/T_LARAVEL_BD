@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BancoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\PagamentoController;
@@ -8,12 +9,12 @@ use App\Http\Controllers\ProfileController;
 use App\Models\Cliente;
 use App\Models\Matricula;
 use App\Models\Modalidade;
+use App\Models\Pagamento;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// A página inicial leva direto ao sistema: quem não está logado cai no login.
+Route::redirect('/', '/dashboard');
 
 Route::get('/dashboard', function () {
 
@@ -117,6 +118,25 @@ Route::middleware('auth')->group(function () {
     */
 
     Route::resource('pagamentos', PagamentoController::class);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Banco de dados (functions, procedure e trigger do PostgreSQL)
+    |--------------------------------------------------------------------------
+    |
+    | GET  /banco               resultado das functions + histórico do trigger
+    | POST /banco/quitar-plano  executa a procedure atualizar_pagamento (admin)
+    |
+    */
+
+    Route::get('/banco', [BancoController::class, 'index'])
+        ->middleware('can:viewAny,'.Pagamento::class)
+        ->name('banco.index');
+
+    Route::post('/banco/quitar-plano', [BancoController::class, 'quitarPlano'])
+        ->middleware('admin')
+        ->name('banco.quitar-plano');
 
 
     /*
